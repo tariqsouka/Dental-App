@@ -214,7 +214,7 @@
     </div>
 
     <script type="module">
-        let selectedTeeth = new Set(); // To store currently selected teeth (e.g., 'UR-8', 'LL-1')
+        let selectedTeeth = new Set(); // To store currently selected selectedTeeth (e.g., 'UR-8', 'LL-1')
         // Stores the category and status for each tooth {toothId: {category: '...', status: '...'}}
         let dentalChartState = {};
 
@@ -475,12 +475,14 @@
             // Provide a loading message
             showCustomModal("Generating PDF", "Please wait while your dental case is being prepared for download...");
 
-            // Use html2canvas to render the main content as an image
-            html2canvas(mainContentDiv, {
-                scale: 2, // Increase scale for better resolution in PDF
-                useCORS: true, // Important for handling external resources if any (though none here)
-                logging: false // Disable logging to console
-            }).then(canvas => {
+            try {
+                // Use html2canvas to render the main content as an image
+                const canvas = await html2canvas(mainContentDiv, {
+                    scale: 2, // Increase scale for better resolution in PDF
+                    useCORS: true, // Important for handling external resources if any (though none here)
+                    logging: false // Disable logging to console
+                });
+
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf; // Access jsPDF from the global window object
 
@@ -491,12 +493,30 @@
                     format: 'a4' // A4 size
                 });
 
-                // Calculate image dimensions to fit the PDF page
-                const imgWidth = pdf.internal.pageSize.getWidth();
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+
+                // Define margins for the PDF content
+                const margin = 20; // px
+                const contentWidth = pdfWidth - (2 * margin);
+                const contentHeight = pdfHeight - (2 * margin);
+
+                // Calculate image dimensions to fit within the content area, maintaining aspect ratio
+                const aspectRatio = canvas.width / canvas.height;
+                let imgWidth = contentWidth;
+                let imgHeight = contentWidth / aspectRatio;
+
+                if (imgHeight > contentHeight) {
+                    imgHeight = contentHeight;
+                    imgWidth = contentHeight * aspectRatio;
+                }
+
+                // Center the image on the page within the defined margins
+                const x = margin + (contentWidth - imgWidth) / 2;
+                const y = margin + (contentHeight - imgHeight) / 2;
 
                 // Add the image to the PDF
-                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
 
                 // Determine filename
                 const filename = `DentalCase_${patientName.replace(/\s/g, '_') || 'Unknown'}_${caseDate || new Date().toISOString().slice(0, 10)}.pdf`;
@@ -504,10 +524,10 @@
                 // Save the PDF
                 pdf.save(filename);
                 customModal.style.display = 'none'; // Hide the loading modal
-            }).catch(error => {
+            } catch (error) {
                 console.error("Error generating PDF:", error);
-                showCustomModal("Error", "Failed to generate PDF. Please try again.");
-            });
+                showCustomModal("Error", "Failed to generate PDF. Please try again. Check console for details.");
+            }
         }
 
         /**
