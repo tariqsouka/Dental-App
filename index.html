@@ -506,14 +506,15 @@
                 let imgWidth = contentWidth;
                 let imgHeight = contentWidth / aspectRatio;
 
+                // If the image height exceeds the content height, scale it down to fit
                 if (imgHeight > contentHeight) {
                     imgHeight = contentHeight;
                     imgWidth = contentHeight * aspectRatio;
                 }
 
-                // Center the image on the page within the defined margins
-                const x = margin + (contentWidth - imgWidth) / 2;
-                const y = margin + (contentHeight - imgHeight) / 2;
+                // Position the image at the top-left of the content area (after margins)
+                const x = margin;
+                const y = margin;
 
                 // Add the image to the PDF
                 pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
