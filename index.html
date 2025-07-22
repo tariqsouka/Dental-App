@@ -64,59 +64,29 @@
             color: #1f2937;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Ring effect */
         }
-        /* Category Colors */
-        .tooth.category-endodontic { background-color: #fca5a5; } /* red-300 */
-        .tooth.category-crown { background-color: #fcd34d; } /* amber-300 */
-        .tooth.category-extraction { background-color: #a78bfa; } /* violet-300 */
-        .tooth.category-restoration { background-color: #a7f3d0; } /* emerald-300 */
-        .tooth.category-scaling { background-color: #bfdbfe; } /* blue-200 */
-        /* New Combined Categories */
-        .tooth.category-endopostcompositecrown { background-color: #a8dadc; } /* light blue-green */
-        .tooth.category-endocompositecrown { background-color: #fca3b7; } /* light pink */
+        /* Category Colors - UPDATED COLORS */
+        .tooth.category-endodontic { background-color: #E91E63; } /* Dark Pink */
+        .tooth.category-crown { background-color: #F44336; } /* Red */
+        .tooth.category-extraction { background-color: #FFFFFF; } /* White */
+        .tooth.category-restoration { background-color: #9C27B0; } /* Purple */
+        .tooth.category-scaling { background-color: #212121; } /* Black */
+        /* New Combined Categories - UPDATED COLORS */
+        .tooth.category-endopostcompositecrown { background-color: #FFD700; } /* Gold */
+        .tooth.category-endocompositecrown { background-color: #66BB6A; } /* Mint Green */
 
 
         /* Status Colors - These will override category if applied later, or blend if category is applied later */
-        .tooth.status-started { background-color: #fdba74; } /* orange-300 */
-        .tooth.status-completed { background-color: #86efac; } /* green-300 */
+        .tooth.status-started { background-color: #FF9800; } /* Orange */
+        .tooth.status-completed { background-color: #4CAF50; } /* Green */
 
-        /* Modal styles */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        .close-button {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
+        /* Style for Extraction 'X' */
+        .tooth.category-extraction.extracted-mark {
+            font-size: 2.5rem; /* Larger font for 'X' */
             font-weight: bold;
-            cursor: pointer;
+            color: #000000; /* Black 'X' on white background for visibility */
+            line-height: 1; /* Ensure 'X' is centered vertically */
         }
-        .close-button:hover,
-        .close-button:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
+
         .uploaded-image {
             max-width: 100%;
             height: auto;
@@ -152,6 +122,11 @@
                     <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                     <input type="date" id="dob" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
+            </div>
+            <!-- New Fees Input -->
+            <div class="mb-4">
+                <label for="fees" class="block text-sm font-medium text-gray-700 mb-1">Fees</label>
+                <input type="number" id="fees" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 1500.00">
             </div>
             <div>
                 <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -233,6 +208,7 @@
         const patientIdInput = document.getElementById('patientId');
         const caseDateInput = document.getElementById('caseDate');
         const dobInput = document.getElementById('dob');
+        const feesInput = document.getElementById('fees'); // New fees input
         const notesInput = document.getElementById('notes');
         const dentalChartDiv = document.getElementById('dentalChart');
         const downloadPdfBtn = document.getElementById('downloadPdfBtn'); // Renamed from saveCaseBtn
@@ -378,15 +354,31 @@
                     if (!dentalChartState[toothId]) {
                         dentalChartState[toothId] = {};
                     }
-                    // Remove all existing category classes
+
+                    // Remove all existing category classes and the extracted-mark class
                     toothElement.classList.remove(
                         'category-endodontic', 'category-crown', 'category-extraction', 'category-restoration', 'category-scaling',
-                        'category-endopostcompositecrown', 'category-endocompositecrown'
+                        'category-endopostcompositecrown', 'category-endocompositecrown',
+                        'extracted-mark' // Remove the 'X' mark class
                     );
+                    // Reset text content to original tooth number if it was 'X'
+                    if (toothElement.textContent === 'X') {
+                        toothElement.textContent = toothElement.dataset.toothId.split('-')[1]; // Get original number
+                    }
+
                     // Add the new category class
                     toothElement.classList.add(`category-${category}`);
                     // Update the dental chart state
                     dentalChartState[toothId].category = category;
+
+                    // Special handling for 'extraction' category
+                    if (category === 'extraction') {
+                        toothElement.textContent = 'X'; // Change text to 'X'
+                        toothElement.classList.add('extracted-mark'); // Add class for styling 'X'
+                    } else {
+                        // Ensure it reverts to number if another category is applied over extraction
+                        toothElement.textContent = toothElement.dataset.toothId.split('-')[1];
+                    }
                 }
             });
             clearToothSelection(); // Clear selection after applying category
@@ -443,8 +435,11 @@
                 toothElement.classList.remove(
                     'category-endodontic', 'category-crown', 'category-extraction', 'category-restoration', 'category-scaling',
                     'category-endopostcompositecrown', 'category-endocompositecrown',
-                    'status-started', 'status-completed'
+                    'status-started', 'status-completed',
+                    'extracted-mark' // Also remove the 'X' mark class
                 );
+                // Reset text content to original tooth number
+                toothElement.textContent = toothElement.dataset.toothId.split('-')[1];
             });
             clearToothSelection();
             showCustomModal("Chart Cleared", "All dental categories and statuses have been removed from the chart.");
@@ -508,6 +503,7 @@
             patientIdInput.value = '';
             caseDateInput.value = '';
             dobInput.value = '';
+            feesInput.value = ''; // Clear fees input
             notesInput.value = '';
             clearToothSelection();
             clearAllTreatments(); // Clear all categories and statuses visually and from state
