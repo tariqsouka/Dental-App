@@ -1,90 +1,633 @@
-
-<!-- The full HTML code user uploaded, truncated here for demonstration -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dental Case Documentation</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script defer src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dental Documentation System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF and html2canvas CDN for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Custom styles for the dental chart */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f2f5;
+        }
+        .tooth-grid {
+            display: grid;
+            /* 8 teeth for right side, a 10px wide divider, 8 teeth for left side */
+            grid-template-columns: repeat(8, 1fr) 10px repeat(8, 1fr);
+            grid-template-rows: repeat(2, 1fr); /* Upper and Lower arches */
+            gap: 4px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        }
+        .tooth-divider {
+            grid-row: 1 / span 2; /* Spans both rows (upper and lower arches) */
+            grid-column: 9; /* Occupies the 9th column, acting as the central divider */
+            background-color: #d1d5db; /* Light gray divider */
+            width: 10px; /* Explicit width for the divider column */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #4b5563; /* Darker gray for any potential text in divider */
+        }
+        .tooth {
+            width: 40px; /* Fixed width for teeth */
+            height: 40px; /* Fixed height for teeth */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d1d5db;
+            border-radius: 8px; /* Rounded corners for teeth */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: #ffffff;
+            color: #374151;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .tooth:hover {
+            background-color: #e5e7eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .tooth.selected {
+            background-color: #93c5fd; /* blue-300 */
+            border-color: #3b82f6; /* blue-500 */
+            color: #1f2937;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Ring effect */
+        }
+        /* Category Colors - UPDATED COLORS */
+        .tooth.category-endodontic { background-color: #E91E63; } /* Dark Pink */
+        .tooth.category-crown { background-color: #F44336; } /* Red */
+        .tooth.category-extraction { background-color: #FFFFFF; } /* White */
+        .tooth.category-restoration { background-color: #9C27B0; } /* Purple */
+        .tooth.category-scaling { background-color: #212121; } /* Black */
+        /* New Combined Categories - UPDATED COLORS */
+        .tooth.category-endopostcompositecrown { background-color: #FFD700; } /* Gold */
+        .tooth.category-endocompositecrown { background-color: #66BB6A; } /* Mint Green */
+
+
+        /* Status Colors - These will override category if applied later, or blend if category is applied later */
+        .tooth.status-started { background-color: #FF9800; } /* Orange */
+        .tooth.status-completed { background-color: #4CAF50; } /* Green */
+
+        /* Style for Extraction 'X' */
+        .tooth.category-extraction.extracted-mark {
+            font-size: 2.5rem; /* Larger font for 'X' */
+            font-weight: bold;
+            color: #000000; /* Black 'X' on white background for visibility */
+            line-height: 1; /* Ensure 'X' is centered vertically */
+        }
+
+        .uploaded-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        /* Specific button styles to match the new tooth colors */
+        .btn-endodontic { background-color: #E91E63; color: white; }
+        .btn-endodontic:hover { background-color: #C2185B; }
+        .btn-crown { background-color: #F44336; color: white; }
+        .btn-crown:hover { background-color: #D32F2F; }
+        .btn-extraction { background-color: #FFFFFF; color: black; border: 1px solid #ccc; } /* White button, black text */
+        .btn-extraction:hover { background-color: #F5F5F5; }
+        .btn-restoration { background-color: #9C27B0; color: white; }
+        .btn-restoration:hover { background-color: #7B1FA2; }
+        .btn-scaling { background-color: #212121; color: white; }
+        .btn-scaling:hover { background-color: #000000; }
+        .btn-endopostcompositecrown { background-color: #FFD700; color: black; } /* Gold button, black text */
+        .btn-endopostcompositecrown:hover { background-color: #FFC107; }
+        .btn-endocompositecrown { background-color: #66BB6A; color: white; }
+        .btn-endocompositecrown:hover { background-color: #4CAF50; }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900 leading-tight">
+<body class="font-sans bg-gray-100 min-h-screen flex flex-col items-center p-4 sm:p-6 md:p-8">
 
-<!-- ... Body Content ... -->
+    <!-- Main Container -->
+    <div id="mainContent" class="bg-white rounded-xl shadow-lg p-6 sm:p-8 md:p-10 w-full max-w-4xl mb-8">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 text-center">Dental Case Documentation</h1>
 
-<script>
-  // Original functions here...
+        <!-- Patient Information Form -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-blue-800 mb-4">Patient Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="patientName" class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                    <input type="text" id="patientName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="John Doe">
+                </div>
+                <div>
+                    <label for="patientId" class="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                    <input type="text" id="patientId" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="P12345">
+                </div>
+                <div>
+                    <label for="caseDate" class="block text-sm font-medium text-gray-700 mb-1">Case Date</label>
+                    <input type="date" id="caseDate" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <input type="date" id="dob" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <!-- New Fees Input -->
+            <div class="mb-4">
+                <label for="fees" class="block text-sm font-medium text-gray-700 mb-1">Fees</label>
+                <input type="number" id="fees" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 1500.00">
+            </div>
+            <div>
+                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="notes" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Any relevant notes for the case..."></textarea>
+            </div>
+        </div>
 
-  async function downloadCaseAsPdf() {
-      const patientName = patientNameInput.value.trim();
-      const caseDate = caseDateInput.value;
+        <!-- Dental Chart and Category/Status Selection -->
+        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-green-800 mb-4">Dental Chart</h2>
 
-      if (!patientName && !patientIdInput.value.trim()) {
-          showCustomModal("Missing Information", "Please enter at least Patient Name or Patient ID before downloading.");
-          return;
-      }
+            <!-- Tooth Categories - LABELS AND STYLES UPDATED -->
+            <div class="flex flex-wrap gap-3 mb-4 justify-center">
+                <button data-category="endodontic" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-endodontic">Endodontic</button>
+                <button data-category="crown" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-crown">Crown</button>
+                <button data-category="extraction" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-extraction">Extraction</button>
+                <button data-category="restoration" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-restoration">Restoration</button>
+                <button data-category="scaling" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-scaling">Scaling</button>
+                <!-- New Combined Categories -->
+                <button data-category="endopostcompositecrown" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-endopostcompositecrown">Endo + Post + Comp + Crown</button>
+                <button data-category="endocompositecrown" class="category-btn px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-colors btn-endocompositecrown">Endo + Comp + Crown</button>
+            </div>
 
-      showCustomModal("Generating PDF", "Please wait while your dental case is being prepared for download...");
+            <!-- Process Statuses -->
+            <div class="flex flex-wrap gap-3 mb-6 justify-center">
+                <button data-status="started" class="status-btn px-4 py-2 rounded-lg text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 transition-colors shadow-md">Mark Started</button>
+                <button data-status="completed" class="status-btn px-4 py-2 rounded-lg text-sm font-semibold text-white bg-lime-600 hover:bg-lime-700 transition-colors shadow-md">Mark Completed</button>
+                <button id="clearSelectionBtn" class="px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors shadow-md">Clear Selection</button>
+                <button id="clearAllCategoriesBtn" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gray-500 hover:bg-gray-600 transition-colors shadow-md">Clear All Treatments</button>
+            </div>
 
-      try {
-          window.scrollTo(0, 0);
+            <!-- Dental Chart Grid -->
+            <div id="dentalChart" class="tooth-grid">
+                <!-- Teeth and divider will be generated here by JavaScript -->
+            </div>
+        </div>
 
-          const originalPaddingTop = mainContentDiv.style.paddingTop;
-          mainContentDiv.style.paddingTop = "0px";
+        <!-- Photo Documentation Section -->
+        <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-purple-800 mb-4">Photo Documentation</h2>
+            <input type="file" id="photoUpload" accept="image/*" multiple class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer">
+            <div id="imagePreviewContainer" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Uploaded images will be displayed here -->
+            </div>
+            <div class="text-center mt-6">
+                <button id="clearPhotosBtn" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-md">Clear Photos</button>
+            </div>
+        </div>
 
-          await new Promise(resolve => setTimeout(resolve, 50));
 
-          const canvas = await html2canvas(mainContentDiv, {
-              scale: 2,
-              useCORS: true,
-              logging: false
-          });
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-4 justify-center mb-8">
+            <button id="downloadPdfBtn" class="px-6 py-3 rounded-xl text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-lg transform hover:scale-105">Download Case as PDF</button>
+            <button id="newCaseBtn" class="px-6 py-3 rounded-xl text-lg font-bold text-indigo-600 border-2 border-indigo-600 bg-white hover:bg-indigo-50 transition-colors shadow-lg transform hover:scale-105">New Case</button>
+        </div>
+    </div>
 
-          mainContentDiv.style.paddingTop = originalPaddingTop;
+    <!-- Custom Modal for Alerts/Confirmations -->
+    <div id="customModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modalTitle" class="text-xl font-bold mb-4"></h3>
+            <p id="modalMessage" class="mb-6"></p>
+            <div id="modalActions" class="flex justify-end gap-3">
+                <button id="modalConfirmBtn" class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors hidden">Confirm</button>
+                <button id="modalCancelBtn" class="px-4 py-2 rounded-md bg-gray-300 text-gray-800 hover:bg-gray-400 transition-colors hidden">Cancel</button>
+                <button id="modalOkBtn" class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
 
-          const imgData = canvas.toDataURL('image/png');
-          const { jsPDF } = window.jspdf;
+    <script type="module">
+        let selectedTeeth = new Set(); // To store currently selected selectedTeeth (e.g., 'UR-8', 'LL-1')
+        // Stores the category and status for each tooth {toothId: {category: '...', status: '...'}}
+        let dentalChartState = {};
 
-          const pdf = new jsPDF({
-              orientation: 'p',
-              unit: 'px',
-              format: 'a4'
-          });
+        // UI Elements
+        const patientNameInput = document.getElementById('patientName');
+        const patientIdInput = document.getElementById('patientId');
+        const caseDateInput = document.getElementById('caseDate');
+        const dobInput = document.getElementById('dob');
+        const feesInput = document.getElementById('fees'); // New fees input
+        const notesInput = document.getElementById('notes');
+        const dentalChartDiv = document.getElementById('dentalChart');
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn'); // Renamed from saveCaseBtn
+        const newCaseBtn = document.getElementById('newCaseBtn');
+        const categoryButtons = document.querySelectorAll('.category-btn');
+        const statusButtons = document.querySelectorAll('.status-btn');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const clearAllCategoriesBtn = document.getElementById('clearAllCategoriesBtn');
+        const mainContentDiv = document.getElementById('mainContent'); // The main content container to capture for PDF
 
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const margin = 20;
+        // Photo Upload Elements
+        const photoUploadInput = document.getElementById('photoUpload');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const clearPhotosBtn = document.getElementById('clearPhotosBtn');
 
-          const contentWidth = pdfWidth - 2 * margin;
-          const contentHeight = pdfHeight - 2 * margin;
+        // Modal Elements
+        const customModal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalActions = document.getElementById('modalActions');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        const modalOkBtn = document.getElementById('modalOkBtn');
+        const closeButton = document.querySelector('.close-button');
 
-          const aspectRatio = canvas.width / canvas.height;
-          let imgWidth = contentWidth;
-          let imgHeight = imgWidth / aspectRatio;
+        /**
+         * Displays a custom modal with a message and optional actions.
+         * @param {string} title - The title of the modal.
+         * @param {string} message - The message to display.
+         * @param {boolean} isConfirm - If true, shows Confirm/Cancel buttons; otherwise, shows OK button.
+         * @returns {Promise<boolean>} - Resolves true if confirmed, false if cancelled/OK.
+         */
+        function showCustomModal(title, message, isConfirm = false) {
+            return new Promise((resolve) => {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalOkBtn.onclick = () => {
+                    customModal.style.display = 'none';
+                    resolve(true);
+                };
+                closeButton.onclick = () => {
+                    customModal.style.display = 'none';
+                    resolve(false);
+                };
 
-          if (imgHeight > contentHeight) {
-              imgHeight = contentHeight;
-              imgWidth = imgHeight * aspectRatio;
-          }
+                if (isConfirm) {
+                    modalOkBtn.style.display = 'none';
+                    modalConfirmBtn.style.display = 'inline-block';
+                    modalCancelBtn.style.display = 'inline-block';
+                    modalConfirmBtn.onclick = () => {
+                        customModal.style.display = 'none';
+                        resolve(true);
+                    };
+                    modalCancelBtn.onclick = () => {
+                        customModal.style.display = 'none';
+                        resolve(false);
+                    };
+                } else {
+                    modalOkBtn.style.display = 'inline-block';
+                    modalConfirmBtn.style.display = 'none';
+                    modalCancelBtn.style.display = 'none';
+                }
+                customModal.style.display = 'flex'; // Use flex to center
+            });
+        }
 
-          const x = margin;
-          const y = margin;
+        /**
+         * Generates the dental chart teeth elements based on the provided image.
+         * Uses quadrant-specific IDs (e.g., UR-8, UL-1).
+         */
+        function generateDentalChart() {
+            dentalChartDiv.innerHTML = ''; // Clear existing teeth
 
-          pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+            // Define teeth for each quadrant
+            const upperRight = [8, 7, 6, 5, 4, 3, 2, 1];
+            const upperLeft = [1, 2, 3, 4, 5, 6, 7, 8];
+            const lowerRight = [8, 7, 6, 5, 4, 3, 2, 1];
+            const lowerLeft = [1, 2, 3, 4, 5, 6, 7, 8];
 
-          const filename = `DentalCase_${patientName.replace(/\s/g, '_') || 'Unknown'}_${caseDate || new Date().toISOString().slice(0, 10)}.pdf`;
-          pdf.save(filename);
+            // Append upper arch teeth
+            upperRight.forEach((num, index) => appendTooth(UR-${num}, num, 1, index + 1)); // row 1, col 1-8
+            upperLeft.forEach((num, index) => appendTooth(UL-${num}, num, 1, index + 10)); // row 1, col 10-17
 
-          customModal.style.display = 'none';
-      } catch (error) {
-          console.error("Error generating PDF:", error);
-          showCustomModal("Error", "Failed to generate PDF. Please try again.");
-      }
-  }
+            // Append lower arch teeth
+            lowerRight.forEach((num, index) => appendTooth(LR-${num}, num, 2, index + 1)); // row 2, col 1-8
+            lowerLeft.forEach((num, index) => appendTooth(LL-${num}, num, 2, index + 10)); // row 2, col 10-17
 
-  // Other functions...
-</script>
+            // Append the single central divider that spans both rows
+            const divider = document.createElement('div');
+            divider.classList.add('tooth-divider');
+            divider.style.gridRow = '1 / span 2'; // Spans both rows
+            divider.style.gridColumn = '9'; // Occupies the 9th column
+            dentalChartDiv.appendChild(divider);
+        }
+
+        /**
+         * Appends a single tooth element to the dental chart grid.
+         * @param {string} toothId - Unique ID for the tooth (e.g., 'UR-8').
+         * @param {number} label - The number to display on the tooth (e.g., 8).
+         * @param {number} row - The grid row for the tooth.
+         * @param {number} col - The grid column for the tooth.
+         */
+        function appendTooth(toothId, label, row, col) {
+            const toothElement = document.createElement('div');
+            toothElement.classList.add('tooth');
+            toothElement.dataset.toothId = toothId;
+            toothElement.textContent = label; // Display only the number
+            toothElement.style.gridRow = row;
+            toothElement.style.gridColumn = col;
+            toothElement.addEventListener('click', () => toggleToothSelection(toothElement, toothId));
+            dentalChartDiv.appendChild(toothElement);
+        }
+
+        /**
+         * Toggles the selection of a tooth.
+         * @param {HTMLElement} toothElement - The tooth div element.
+         * @param {string} toothId - The ID of the tooth (e.g., 'UR-8').
+         */
+        function toggleToothSelection(toothElement, toothId) {
+            if (toothElement.classList.contains('selected')) {
+                selectedTeeth.delete(toothId);
+                toothElement.classList.remove('selected');
+            } else {
+                selectedTeeth.add(toothId);
+                toothElement.classList.add('selected');
+            }
+        }
+
+        /**
+         * Applies a selected category to all currently selected teeth.
+         * @param {string} category - The dental category to apply (e.g., 'endodontic').
+         */
+        function applyCategoryToSelectedTeeth(category) {
+            if (selectedTeeth.size === 0) {
+                showCustomModal("Selection Needed", "Please select one or more teeth first.");
+                return;
+            }
+
+            selectedTeeth.forEach(toothId => {
+                const toothElement = dentalChartDiv.querySelector([data-tooth-id="${toothId}"]);
+                if (toothElement) {
+                    // Ensure dentalChartState[toothId] exists as an object
+                    if (!dentalChartState[toothId]) {
+                        dentalChartState[toothId] = {};
+                    }
+
+                    // Remove all existing category classes and the extracted-mark class
+                    toothElement.classList.remove(
+                        'category-endodontic', 'category-crown', 'category-extraction', 'category-restoration', 'category-scaling',
+                        'category-endopostcompositecrown', 'category-endocompositecrown',
+                        'extracted-mark' // Remove the 'X' mark class
+                    );
+                    // Reset text content to original tooth number if it was 'X'
+                    if (toothElement.textContent === 'X') {
+                        toothElement.textContent = toothElement.dataset.toothId.split('-')[1]; // Get original number
+                    }
+
+                    // Add the new category class
+                    toothElement.classList.add(category-${category});
+                    // Update the dental chart state
+                    dentalChartState[toothId].category = category;
+
+                    // Special handling for 'extraction' category
+                    if (category === 'extraction') {
+                        toothElement.textContent = 'X'; // Change text to 'X'
+                        toothElement.classList.add('extracted-mark'); // Add class for styling 'X'
+                    } else {
+                        // Ensure it reverts to number if another category is applied over extraction
+                        toothElement.textContent = toothElement.dataset.toothId.split('-')[1];
+                    }
+                }
+            });
+            clearToothSelection(); // Clear selection after applying category
+        }
+
+        /**
+         * Applies a selected status (started/completed) to all currently selected teeth.
+         * @param {string} status - The process status to apply (e.g., 'started', 'completed').
+         */
+        function applyStatusToSelectedTeeth(status) {
+            if (selectedTeeth.size === 0) {
+                showCustomModal("Selection Needed", "Please select one or more teeth first.");
+                return;
+            }
+
+            selectedTeeth.forEach(toothId => {
+                const toothElement = dentalChartDiv.querySelector([data-tooth-id="${toothId}"]);
+                if (toothElement) {
+                    // Ensure dentalChartState[toothId] exists as an object
+                    if (!dentalChartState[toothId]) {
+                        dentalChartState[toothId] = {};
+                    }
+                    // Remove all existing status classes
+                    toothElement.classList.remove('status-started', 'status-completed');
+                    // Add the new status class
+                    toothElement.classList.add(status-${status});
+                    // Update the dental chart state
+                    dentalChartState[toothId].status = status;
+                }
+            });
+            clearToothSelection(); // Clear selection after applying status
+        }
+
+        /**
+         * Clears the visual selection of all teeth.
+         */
+        function clearToothSelection() {
+            selectedTeeth.forEach(toothId => {
+                const toothElement = dentalChartDiv.querySelector([data-tooth-id="${toothId}"]);
+                if (toothElement) {
+                    toothElement.classList.remove('selected');
+                }
+            });
+            selectedTeeth.clear();
+        }
+
+        /**
+         * Clears all applied categories and statuses from the dental chart and resets state.
+         */
+        function clearAllTreatments() {
+            dentalChartState = {}; // Reset the state for all teeth
+            const allToothElements = dentalChartDiv.querySelectorAll('.tooth');
+            allToothElements.forEach(toothElement => {
+                toothElement.classList.remove(
+                    'category-endodontic', 'category-crown', 'category-extraction', 'category-restoration', 'category-scaling',
+                    'category-endopostcompositecrown', 'category-endocompositecrown',
+                    'status-started', 'status-completed',
+                    'extracted-mark' // Also remove the 'X' mark class
+                );
+                // Reset text content to original tooth number
+                toothElement.textContent = toothElement.dataset.toothId.split('-')[1];
+            });
+            clearToothSelection();
+            showCustomModal("Chart Cleared", "All dental categories and statuses have been removed from the chart.");
+        }
+
+        /**
+         * Downloads the current form content as a PDF.
+         */
+        async function downloadCaseAsPdf() {
+            const patientName = patientNameInput.value.trim();
+            const caseDate = caseDateInput.value;
+
+            if (!patientName && !patientIdInput.value.trim()) {
+                showCustomModal("Missing Information", "Please enter at least Patient Name or Patient ID before downloading.");
+                return;
+            }
+
+            // Provide a loading message
+            showCustomModal("Generating PDF", "Please wait while your dental case is being prepared for download...");
+
+            try {
+                // Use html2canvas to render the main content as an image
+                const canvas = await html2canvas(mainContentDiv, {
+                    scale: 2, // Increase scale for better resolution in PDF
+                    useCORS: true, // Important for handling external resources if any (though none here)
+                    logging: false // Disable logging to console
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf; // Access jsPDF from the global window object
+
+                // Create a new PDF document
+                const pdf = new jsPDF({
+                    orientation: 'p', // Portrait
+                    unit: 'px',
+                    format: 'a4' // A4 size
+                });
+
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+
+                // Define margins for the PDF content
+                const margin = 20; // px
+                const contentWidth = pdfWidth - (2 * margin);
+                const contentHeight = pdfHeight - (2 * margin);
+
+                // Calculate image dimensions to fit within the content area, maintaining aspect ratio
+                const aspectRatio = canvas.width / canvas.height;
+                let imgWidth = contentWidth;
+                let imgHeight = contentWidth / aspectRatio;
+
+                // If the image height exceeds the content height, scale it down to fit
+                if (imgHeight > contentHeight) {
+                    imgHeight = contentHeight;
+                    imgWidth = contentHeight * aspectRatio;
+                }
+
+                // Position the image at the top-left of the content area (after margins)
+                const x = margin;
+                const y = margin;
+
+                // Add the image to the PDF
+                pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+
+                // Determine filename
+                const filename = DentalCase_${patientName.replace(/\s/g, '_') || 'Unknown'}_${caseDate || new Date().toISOString().slice(0, 10)}.pdf;
+
+                // Save the PDF
+                pdf.save(filename);
+                customModal.style.display = 'none'; // Hide the loading modal
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                showCustomModal("Error", "Failed to generate PDF. Please try again. Check console for details.");
+            }
+        }
+
+        /**
+         * Clears all input fields and resets the dental chart.
+         */
+        function clearForm() {
+            patientNameInput.value = '';
+            patientIdInput.value = '';
+            caseDateInput.value = '';
+            dobInput.value = '';
+            feesInput.value = ''; // Clear fees input
+            notesInput.value = '';
+            clearToothSelection();
+            clearAllTreatments(); // Clear all categories and statuses visually and from state
+            clearPhotos(); // Clear uploaded photos
+            showCustomModal("New Case", "Form cleared. Ready for a new case!");
+        }
+
+        /**
+         * Handles the selection of photo files and displays them.
+         */
+        function handlePhotoUpload(event) {
+            imagePreviewContainer.innerHTML = ''; // Clear previous previews
+            const files = event.target.files;
+
+            if (files.length === 0) {
+                return;
+            }
+
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('uploaded-image');
+                        imagePreviewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showCustomModal("Invalid File Type", File "${file.name}" is not an image and will not be displayed.);
+                }
+            });
+        }
+
+        /**
+         * Clears all uploaded photos from the display.
+         */
+        function clearPhotos() {
+            imagePreviewContainer.innerHTML = '';
+            photoUploadInput.value = ''; // Clear the file input
+            showCustomModal("Photos Cleared", "All uploaded photos have been removed.");
+        }
+
+
+        // Event Listeners
+        downloadPdfBtn.addEventListener('click', downloadCaseAsPdf); // New PDF download handler
+        newCaseBtn.addEventListener('click', clearForm);
+
+        categoryButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const category = event.target.dataset.category;
+                applyCategoryToSelectedTeeth(category);
+            });
+        });
+
+        statusButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const status = event.target.dataset.status;
+                applyStatusToSelectedTeeth(status);
+            });
+        });
+
+        clearSelectionBtn.addEventListener('click', clearToothSelection);
+        clearAllCategoriesBtn.addEventListener('click', clearAllTreatments);
+
+        // Photo Upload Event Listeners
+        photoUploadInput.addEventListener('change', handlePhotoUpload);
+        clearPhotosBtn.addEventListener('click', clearPhotos);
+
+        // Initialize on window load
+        window.onload = function() {
+            generateDentalChart();
+            // Set today's date as default
+            caseDateInput.valueAsDate = new Date();
+        };
+
+        // Close modal when clicking outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target === customModal) {
+                customModal.style.display = 'none';
+                // Resolve any pending promise from showCustomModal as false if clicked outside
+                if (modalConfirmBtn.style.display === 'inline-block') {
+                    modalCancelBtn.click(); // Simulate cancel click
+                } else {
+                    modalOkBtn.click(); // Simulate OK click
+                }
+            }
+        });
+    </script>
 </body>
 </html>
